@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react';
 import { api } from '../utils/api';
 
 const MONTH_TH = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const SEASON_PRESETS = ['ฤดูกาลที่ 1', 'ฤดูกาลที่ 2', 'ฤดูกาลที่ 3'];
 
 function fmt(n) {
   return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0 });
 }
 
-export default function DashboardPage({ user, setPage }) {
+export default function DashboardPage({ user, setPage, season, setSeason }) {
   const [summary, setSummary] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,8 +20,8 @@ export default function DashboardPage({ user, setPage }) {
       setLoading(true);
       try {
         const [sum, txs] = await Promise.all([
-          api.getSummary(user.uid, year),
-          api.getTransactions(user.uid),
+          api.getSummary(user.uid, year, undefined, season),
+          api.getTransactions(user.uid, season),
         ]);
         setSummary(sum);
         setTransactions(txs.slice(0, 8)); // แสดง 8 รายการล่าสุด
@@ -31,7 +32,7 @@ export default function DashboardPage({ user, setPage }) {
       }
     }
     load();
-  }, [user.uid, year]);
+  }, [user.uid, year, season]);
 
   if (loading) return <LoadingSpinner />;
 
@@ -40,11 +41,56 @@ export default function DashboardPage({ user, setPage }) {
   return (
     <div>
       {/* Welcome */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a3a1a', margin: 0 }}>
           สวัสดี, {user.displayName || user.email?.split('@')[0]} 👋
         </h2>
-        <p style={{ color: '#666', marginTop: 4, fontSize: 14 }}>ปี {parseInt(year) + 543} · ภาพรวมการเงินนาข้าว</p>
+        <p style={{ color: '#666', marginTop: 4, fontSize: 14 }}>ปี {parseInt(year) + 543} · ฤดูกาลที่เลือก: {season || '-'}</p>
+      </div>
+
+      {/* Season Selector */}
+      <div style={{ ...card, marginBottom: 20, padding: '16px 18px' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#1a3a1a', marginBottom: 10 }}>เลือกฤดูกาล</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {SEASON_PRESETS.map(s => (
+            <button
+              key={s}
+              onClick={() => setSeason(s)}
+              style={{
+                padding: '7px 14px',
+                borderRadius: 999,
+                border: '1.5px solid',
+                borderColor: season === s ? '#2D7A4F' : '#ddd',
+                background: season === s ? '#2D7A4F' : '#fff',
+                color: season === s ? '#fff' : '#555',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'inherit',
+              }}
+            >
+              {s.replace('ฤดูกาลที่ ', 'ฤดูกาล ')}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
+          <span style={{ fontSize: 12, color: '#777' }}>กำหนดเอง</span>
+          <input
+            type="text"
+            placeholder="เช่น นาปี 2569, รุ่นที่ 2"
+            value={season}
+            onChange={(e) => setSeason(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '8px 10px',
+              border: '1.5px solid #e0e0e0',
+              borderRadius: 10,
+              fontSize: 13,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+        </div>
       </div>
 
       {/* Summary Cards */}

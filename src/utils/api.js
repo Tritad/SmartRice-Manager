@@ -27,8 +27,8 @@ async function post(action, body) {
 }
 
 export const api = {
-  getTransactions: (userId) => call({ action: 'getTransactions', userId }),
+  getTransactions: (userId, season) => call({ action: 'getTransactions', userId, season }),
   addTransaction: (data) => post('addTransaction', data),
   deleteTransaction: (id, userId) => call({ action: 'deleteTransaction', id, userId }),
-  getSummary: (userId, year, month) => call({ action: 'getSummary', userId, year, month }),
+  getSummary: (userId, year, month, season) => call({ action: 'getSummary', userId, year, month, season }),
 };

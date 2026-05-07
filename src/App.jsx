@@ -12,6 +12,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState('dashboard');
+  const [season, setSeason] = useState('ฤดูกาลที่ 1');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -36,8 +37,8 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: '#f0f4f0', fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif" }}>
       <Navbar user={user} page={page} setPage={setPage} />
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px' }}>
-        {page === 'dashboard' && <DashboardPage user={user} setPage={setPage} />}
-        {page === 'add' && <AddTransactionPage user={user} setPage={setPage} />}
+        {page === 'dashboard' && <DashboardPage user={user} setPage={setPage} season={season} setSeason={setSeason} />}
+        {page === 'add' && <AddTransactionPage user={user} setPage={setPage} season={season} setSeason={setSeason} />}
         {page === 'report' && <ReportPage user={user} />}
       </main>
     </div>

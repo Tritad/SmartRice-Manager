@@ -6,15 +6,16 @@ const CATEGORIES = {
   expense: ['ค่าเมล็ดพันธุ์', 'ค่าปุ๋ย/ยา', 'ค่าแรงงาน', 'ค่าเครื่องจักร/เช่า', 'ค่าน้ำมัน', 'ค่าเช่าที่นา', 'ค่าไฟ/น้ำ', 'อื่นๆ'],
   income: ['รายรับจากการขาย', 'เงินอุดหนุน', 'ขายพืชร่วม', 'อื่นๆ'],
 };
+const SEASON_PRESETS = ['ฤดูกาลที่ 1', 'ฤดูกาลที่ 2', 'ฤดูกาลที่ 3'];
 
-export default function AddTransactionPage({ user, setPage }) {
+export default function AddTransactionPage({ user, setPage, season, setSeason }) {
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     type: 'expense',
     category: 'ค่าเมล็ดพันธุ์',
     amount: '',
     description: '',
-    season: '',
+    season: season || '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -29,6 +30,10 @@ export default function AddTransactionPage({ user, setPage }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.season || form.season.trim().length === 0) {
+      setError('กรุณาเลือกฤดูกาลก่อนบันทึก');
+      return;
+    }
     if (!form.amount || parseFloat(form.amount) <= 0) {
       setError('กรุณากรอกจำนวนเงินที่ถูกต้อง');
       return;
@@ -62,6 +67,51 @@ export default function AddTransactionPage({ user, setPage }) {
       </div>
 
       <div style={card}>
+        {/* Season */}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a3a1a', marginBottom: 8 }}>เลือกฤดูกาล</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {SEASON_PRESETS.map(s => (
+              <button
+                key={s}
+                onClick={() => {
+                  set('season', s);
+                  setSeason(s);
+                }}
+                type="button"
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 999,
+                  border: '1.5px solid',
+                  borderColor: form.season === s ? '#2D7A4F' : '#ddd',
+                  background: form.season === s ? '#2D7A4F' : '#fff',
+                  color: form.season === s ? '#fff' : '#555',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                }}
+              >
+                {s.replace('ฤดูกาลที่ ', 'ฤดูกาล ')}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
+            <span style={{ fontSize: 12, color: '#777' }}>กำหนดเอง</span>
+            <input
+              type="text"
+              placeholder="เช่น นาปี 2569, รุ่นที่ 2"
+              value={form.season}
+              onChange={e => {
+                set('season', e.target.value);
+                setSeason(e.target.value);
+              }}
+              style={input}
+              required
+            />
+          </div>
+        </div>
+
         {/* Type Toggle */}
         <div style={toggleRow}>
           {['expense', 'income'].map(t => (
@@ -109,17 +159,6 @@ export default function AddTransactionPage({ user, setPage }) {
               min="0"
               step="0.01"
               required
-            />
-          </FormGroup>
-
-          {/* Season */}
-          <FormGroup label="ฤดูกาล / รุ่น (ไม่บังคับ)">
-            <input
-              type="text"
-              placeholder="เช่น นาปี 2567, รุ่นที่ 1"
-              value={form.season}
-              onChange={e => set('season', e.target.value)}
-              style={input}
             />
           </FormGroup>
 

@@ -29,14 +29,14 @@ function handleRequest(e) {
     let result;
 
     if (action === 'getTransactions') {
-      result = getTransactions(params.userId);
+      result = getTransactions(params.userId, params.season);
     } else if (action === 'addTransaction') {
       const data = JSON.parse(e.postData.contents);
       result = addTransaction(data);
     } else if (action === 'deleteTransaction') {
       result = deleteTransaction(params.id, params.userId);
     } else if (action === 'getSummary') {
-      result = getSummary(params.userId, params.year, params.month);
+      result = getSummary(params.userId, params.year, params.month, params.season);
     } else if (action === 'ping') {
       result = { status: 'ok', message: 'Rice Farm API is running 🌾' };
     } else {
@@ -70,7 +70,7 @@ function setupSheets() {
 }
 
 // =============== Transactions ===============
-function getTransactions(userId) {
+function getTransactions(userId, season) {
   if (!userId) throw new Error('userId required');
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName('transactions');
@@ -82,8 +82,12 @@ function getTransactions(userId) {
   const headers = data[0];
   const rows = data.slice(1);
 
+  const userIdIdx = headers.indexOf('userId');
+  const seasonIdx = headers.indexOf('season');
+
   return rows
-    .filter(row => row[headers.indexOf('userId')] === userId)
+    .filter(row => row[userIdIdx] === userId)
+    .filter(row => !season || (row[seasonIdx] || '').toString() === season.toString())
     .map(row => {
       const obj = {};
       headers.forEach((h, i) => obj[h] = row[i]);
@@ -141,8 +145,8 @@ function deleteTransaction(id, userId) {
   throw new Error('Transaction not found');
 }
 
-function getSummary(userId, year, month) {
-  const transactions = getTransactions(userId);
+function getSummary(userId, year, month, season) {
+  const transactions = getTransactions(userId, season);
 
   let filtered = transactions;
   if (year) filtered = filtered.filter(t => t.date && t.date.toString().startsWith(year));
@@ -160,9 +164,12 @@ function getSummary(userId, year, month) {
   });
 
   // รายการรายเดือน (12 เดือน)
+  const baseYear = (year || new Date().getFullYear().toString());
+  const yearTx = transactions.filter(t => t.date && t.date.toString().startsWith(baseYear));
+
   const monthly = Array.from({ length: 12 }, (_, i) => {
     const m = (i + 1).toString().padStart(2, '0');
-    const monthTx = transactions.filter(t => t.date && t.date.toString().startsWith(`${year || new Date().getFullYear()}-${m}`));
+    const monthTx = yearTx.filter(t => t.date && t.date.toString().startsWith(`${baseYear}-${m}`));
     return {
       month: m,
       income: monthTx.filter(t => t.type === 'income').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0),
