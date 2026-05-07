@@ -8,15 +8,25 @@ const CATEGORIES = {
 };
 const SEASON_PRESETS = ['ฤดูกาลที่ 1', 'ฤดูกาลที่ 2', 'ฤดูกาลที่ 3'];
 
+function fmt(n) {
+  return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0 });
+}
+
 export default function AddTransactionPage({ user, setPage, season, setSeason }) {
+  const createItem = (type) => ({
+    category: CATEGORIES[type][0],
+    quantity: '',
+    price: '',
+    note: '',
+  });
+
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     type: 'expense',
-    category: 'ค่าเมล็ดพันธุ์',
-    amount: '',
     description: '',
     season: season || '',
   });
+  const [items, setItems] = useState([createItem('expense')]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +35,21 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
 
   const handleTypeChange = (type) => {
     set('type', type);
-    set('category', CATEGORIES[type][0]);
+    setItems(prev => prev.map(it => ({ ...it, category: CATEGORIES[type][0] })));
+  };
+
+  const updateItem = (idx, patch) => {
+    setItems(prev => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  };
+
+  const addItem = () => setItems(prev => [...prev, createItem(form.type)]);
+  const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
+
+  const calcAmount = (item) => {
+    const qty = parseFloat(item.quantity);
+    const price = parseFloat(item.price);
+    if (!qty || !price) return 0;
+    return qty * price;
   };
 
   const handleSubmit = async (e) => {
@@ -34,30 +58,50 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
       setError('กรุณาเลือกฤดูกาลก่อนบันทึก');
       return;
     }
-    if (!form.amount || parseFloat(form.amount) <= 0) {
-      setError('กรุณากรอกจำนวนเงินที่ถูกต้อง');
+    if (items.length === 0) {
+      setError('กรุณาเพิ่มรายการอย่างน้อย 1 รายการ');
+      return;
+    }
+    const hasInvalid = items.some(it => !it.category || parseFloat(it.quantity) <= 0 || parseFloat(it.price) <= 0);
+    if (hasInvalid) {
+      setError('กรุณากรอกจำนวนและราคาให้ถูกต้อง');
       return;
     }
     try {
       setLoading(true);
       setError('');
-      await api.addTransaction({
+      const payloads = items.map(it => {
+        const lineNote = (it.note || '').trim();
+        const lineSummary = `จำนวน ${it.quantity} x ราคา ${it.price}`;
+        const descParts = [];
+        if (form.description) descParts.push(form.description);
+        if (lineNote) descParts.push(lineNote);
+        descParts.push(lineSummary);
+
+        return {
         ...form,
         userId: user.uid,
         userEmail: user.email,
-        amount: parseFloat(form.amount),
+        category: it.category,
+        amount: calcAmount(it),
+        description: descParts.join(' | '),
+        };
       });
+      await Promise.all(payloads.map(p => api.addTransaction(p)));
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        setForm(prev => ({ ...prev, amount: '', description: '' }));
-      }, 2000);
+        setForm(prev => ({ ...prev, description: '' }));
+        setItems([createItem(form.type)]);
+      }, 3000);
     } catch (e) {
       setError('บันทึกไม่สำเร็จ: ' + e.message);
     } finally {
       setLoading(false);
     }
   };
+
+  const totalAmount = items.reduce((s, it) => s + calcAmount(it), 0);
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
@@ -141,26 +185,70 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
             />
           </FormGroup>
 
-          {/* Category */}
-          <FormGroup label="หมวดหมู่">
-            <select value={form.category} onChange={e => set('category', e.target.value)} style={input}>
-              {CATEGORIES[form.type].map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </FormGroup>
-
-          {/* Amount */}
-          <FormGroup label="จำนวนเงิน (บาท)">
-            <input
-              type="number"
-              placeholder="0.00"
-              value={form.amount}
-              onChange={e => set('amount', e.target.value)}
-              style={input}
-              min="0"
-              step="0.01"
-              required
-            />
-          </FormGroup>
+          {/* Items */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>รายการย่อย</div>
+              <button type="button" onClick={addItem} style={smallBtn}>+ เพิ่มรายการ</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {items.map((it, idx) => (
+                <div key={idx} style={itemCard}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.6fr 0.7fr 0.7fr 32px', gap: 8, alignItems: 'center' }}>
+                    <select
+                      value={it.category}
+                      onChange={e => updateItem(idx, { category: e.target.value })}
+                      style={inputSmall}
+                    >
+                      {CATEGORIES[form.type].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="จำนวน"
+                      value={it.quantity}
+                      onChange={e => updateItem(idx, { quantity: e.target.value })}
+                      style={inputSmall}
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    <input
+                      type="number"
+                      placeholder="ราคา"
+                      value={it.price}
+                      onChange={e => updateItem(idx, { price: e.target.value })}
+                      style={inputSmall}
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    <div style={{ fontSize: 13, color: '#333', fontWeight: 600, textAlign: 'right' }}>
+                      {fmt(calcAmount(it))} ฿
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(idx)}
+                      disabled={items.length === 1}
+                      style={iconBtn}
+                      title="ลบรายการ"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="รายละเอียดรายการย่อย (ไม่บังคับ)"
+                    value={it.note}
+                    onChange={e => updateItem(idx, { note: e.target.value })}
+                    style={{ ...inputSmall, marginTop: 8 }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, fontSize: 14, fontWeight: 700, color: '#1a3a1a' }}>
+              รวมทั้งหมด: {fmt(totalAmount)} ฿
+            </div>
+          </div>
 
           {/* Description */}
           <FormGroup label="รายละเอียด (ไม่บังคับ)">
@@ -175,17 +263,17 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
 
           {error && <p style={{ color: '#c0392b', fontSize: 13, margin: '4px 0 12px' }}>{error}</p>}
 
-          {success && (
-            <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: '#2D7A4F', fontSize: 14 }}>
-              ✅ บันทึกรายการสำเร็จ!
-            </div>
-          )}
-
           <button type="submit" style={submitBtn} disabled={loading}>
             {loading ? '⏳ กำลังบันทึก...' : '💾 บันทึกรายการ'}
           </button>
         </form>
       </div>
+
+      {success && (
+        <div style={toast}>
+          ✅ บันทึกข้อมูลเรียบร้อย
+        </div>
+      )}
     </div>
   );
 }
@@ -250,6 +338,45 @@ const input = {
   background: '#fff',
 };
 
+const inputSmall = {
+  width: '100%',
+  padding: '9px 10px',
+  border: '1.5px solid #e0e0e0',
+  borderRadius: 8,
+  fontSize: 13,
+  fontFamily: 'inherit',
+  outline: 'none',
+  boxSizing: 'border-box',
+  background: '#fff',
+};
+
+const itemCard = {
+  border: '1px solid #eef1ee',
+  borderRadius: 10,
+  padding: 10,
+  background: '#fbfdfb',
+};
+
+const smallBtn = {
+  background: '#2D7A4F',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 8,
+  padding: '6px 10px',
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+};
+
+const iconBtn = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 16,
+  opacity: 0.7,
+};
+
 const submitBtn = {
   width: '100%',
   padding: '14px',
@@ -262,4 +389,18 @@ const submitBtn = {
   cursor: 'pointer',
   fontFamily: 'inherit',
   marginTop: 8,
+};
+
+const toast = {
+  position: 'fixed',
+  right: 20,
+  bottom: 20,
+  background: '#2D7A4F',
+  color: '#fff',
+  padding: '12px 16px',
+  borderRadius: 10,
+  boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+  fontSize: 14,
+  fontWeight: 700,
+  zIndex: 999,
 };

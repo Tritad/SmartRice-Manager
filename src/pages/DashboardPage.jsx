@@ -11,9 +11,12 @@ function fmt(n) {
 
 export default function DashboardPage({ user, setPage, season, setSeason }) {
   const [summary, setSummary] = useState(null);
-  const [transactions, setTransactions] = useState([]);
+  const [transactionsAll, setTransactionsAll] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [year] = useState(new Date().getFullYear().toString());
+  const [billDate, setBillDate] = useState(new Date().toISOString().slice(0, 10));
+  const [showAllBills, setShowAllBills] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -24,7 +27,8 @@ export default function DashboardPage({ user, setPage, season, setSeason }) {
           api.getTransactions(user.uid, season),
         ]);
         setSummary(sum);
-        setTransactions(txs.slice(0, 8)); // แสดง 8 รายการล่าสุด
+        setTransactionsAll(txs);
+        setRecentTransactions(txs.slice(0, 8)); // แสดง 8 รายการล่าสุด
       } catch (e) {
         console.error(e);
       } finally {
@@ -37,6 +41,13 @@ export default function DashboardPage({ user, setPage, season, setSeason }) {
   if (loading) return <LoadingSpinner />;
 
   const profit = summary ? summary.netProfit : 0;
+  const billTransactions = showAllBills
+    ? transactionsAll
+    : transactionsAll.filter(t => (t.date ? t.date.toString().slice(0, 10) : '') === billDate);
+  const billIncome = billTransactions.filter(t => t.type === 'income')
+    .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+  const billExpense = billTransactions.filter(t => t.type === 'expense')
+    .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 
   return (
     <div>
@@ -94,9 +105,9 @@ export default function DashboardPage({ user, setPage, season, setSeason }) {
       </div>
 
       {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
-        <SummaryCard label="รายรับทั้งหมด" value={summary?.totalIncome || 0} color="#2D7A4F" icon="💰" />
-        <SummaryCard label="รายจ่ายทั้งหมด" value={summary?.totalExpense || 0} color="#c0392b" icon="📤" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <SummaryCard label="ต้นทุนรวม" value={summary?.totalExpense || 0} color="#c0392b" icon="📤" />
+        <SummaryCard label="รายรับรวม" value={summary?.totalIncome || 0} color="#2D7A4F" icon="💰" />
         <SummaryCard
           label="กำไรสุทธิ"
           value={profit}
@@ -105,13 +116,61 @@ export default function DashboardPage({ user, setPage, season, setSeason }) {
         />
       </div>
 
-      {/* Monthly Bar Chart (CSS only) */}
-      {summary?.monthly && (
-        <div style={card}>
-          <h3 style={cardTitle}>รายรับ-รายจ่ายรายเดือน {parseInt(year) + 543}</h3>
-          <MonthlyChart monthly={summary.monthly} />
+      {/* Bills By Date */}
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h3 style={{ ...cardTitle, marginBottom: 0 }}>บิลรายรับ-รายจ่ายตามวันที่</h3>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {!showAllBills && (
+              <input
+                type="date"
+                value={billDate}
+                onChange={(e) => setBillDate(e.target.value)}
+                style={{
+                  padding: '7px 10px',
+                  border: '1.5px solid #e0e0e0',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontFamily: 'inherit',
+                }}
+              />
+            )}
+            <button
+              onClick={() => setShowAllBills(prev => !prev)}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: '1.5px solid #2D7A4F',
+                background: showAllBills ? '#2D7A4F' : '#fff',
+                color: showAllBills ? '#fff' : '#2D7A4F',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+              }}
+            >
+              {showAllBills ? 'ดูตามวันที่' : 'ดูทั้งหมดของฤดูกาล'}
+            </button>
+          </div>
         </div>
-      )}
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <span style={pill('#c0392b')}>ต้นทุน: {fmt(billExpense)} ฿</span>
+          <span style={pill('#2D7A4F')}>รายรับ: {fmt(billIncome)} ฿</span>
+          <span style={pill(billIncome - billExpense >= 0 ? '#1565c0' : '#c0392b')}>
+            คงเหลือ: {fmt(billIncome - billExpense)} ฿
+          </span>
+        </div>
+
+        {billTransactions.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '24px 0', color: '#aaa' }}>
+            <div style={{ fontSize: 36 }}>🧾</div>
+            <p>ไม่มีบิลในช่วงที่เลือก</p>
+          </div>
+        ) : (
+          billTransactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)
+        )}
+      </div>
 
       {/* Category Breakdown */}
       {summary?.byCategory && Object.keys(summary.byCategory).length > 0 && (
@@ -130,13 +189,13 @@ export default function DashboardPage({ user, setPage, season, setSeason }) {
           <button onClick={() => setPage('add')} style={addBtn}>+ เพิ่มรายการ</button>
         </div>
 
-        {transactions.length === 0 ? (
+        {recentTransactions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 0', color: '#aaa' }}>
             <div style={{ fontSize: 40 }}>📋</div>
             <p>ยังไม่มีรายการ กดปุ่มด้านบนเพื่อเพิ่มรายการแรก</p>
           </div>
         ) : (
-          transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)
+          recentTransactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)
         )}
       </div>
     </div>
@@ -149,29 +208,6 @@ function SummaryCard({ label, value, color, icon }) {
       <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 700, color }}>{fmt(value)} ฿</div>
-    </div>
-  );
-}
-
-function MonthlyChart({ monthly }) {
-  const maxVal = Math.max(...monthly.map(m => Math.max(m.income, m.expense)), 1);
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, minWidth: 500, height: 120, padding: '0 4px' }}>
-        {monthly.map((m, i) => (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <div style={{ width: '100%', display: 'flex', gap: 2, alignItems: 'flex-end', height: 90 }}>
-              <div style={{ flex: 1, background: '#2D7A4F', borderRadius: '3px 3px 0 0', height: `${(m.income / maxVal) * 90}px`, transition: 'height 0.6s', minHeight: m.income > 0 ? 2 : 0 }} />
-              <div style={{ flex: 1, background: '#e74c3c', borderRadius: '3px 3px 0 0', height: `${(m.expense / maxVal) * 90}px`, transition: 'height 0.6s', minHeight: m.expense > 0 ? 2 : 0 }} />
-            </div>
-            <span style={{ fontSize: 11, color: '#888' }}>{MONTH_TH[parseInt(m.month)]}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: '#666' }}>
-        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#2D7A4F', borderRadius: 2, marginRight: 4 }} />รายรับ</span>
-        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#e74c3c', borderRadius: 2, marginRight: 4 }} />รายจ่าย</span>
-      </div>
     </div>
   );
 }
@@ -242,3 +278,12 @@ const addBtn = {
   cursor: 'pointer',
   fontFamily: 'inherit',
 };
+
+const pill = (color) => ({
+  background: color,
+  color: '#fff',
+  padding: '6px 12px',
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 700,
+});
