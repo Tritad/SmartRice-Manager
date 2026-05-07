@@ -460,4 +460,4 @@ const toastStyles = `
   to { opacity: 0; }
 }
 `;
-};
+
