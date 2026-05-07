@@ -16,6 +16,42 @@ function getLocalDateString(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+function normalizeDate(value) {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parts = value.toString().split('/');
+  if (parts.length === 3 && parts[2].length === 4) {
+    const month = parts[0].padStart(2, '0');
+    const day = parts[1].padStart(2, '0');
+    return `${parts[2]}-${month}-${day}`;
+  }
+  const d = new Date(value);
+  if (!Number.isNaN(d.getTime())) return getLocalDateString(d);
+  return value.toString();
+}
+
+function buildSummary(transactions) {
+  const income = transactions.filter(t => t.type === 'income')
+    .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+  const expense = transactions.filter(t => t.type === 'expense')
+    .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+
+  const byCategory = {};
+  transactions.forEach(t => {
+    if (!byCategory[t.category]) byCategory[t.category] = { income: 0, expense: 0 };
+    if (t.type === 'income') byCategory[t.category].income += parseFloat(t.amount) || 0;
+    else byCategory[t.category].expense += parseFloat(t.amount) || 0;
+  });
+
+  return {
+    totalIncome: income,
+    totalExpense: expense,
+    netProfit: income - expense,
+    byCategory,
+    count: transactions.length,
+  };
+}
+
 export default function DashboardPage({ user, setPage, season, setSeason }) {
   const [summary, setSummary] = useState(null);
   const [transactionsAll, setTransactionsAll] = useState([]);
@@ -29,13 +65,10 @@ export default function DashboardPage({ user, setPage, season, setSeason }) {
     async function load() {
       setLoading(true);
       try {
-        const [sum, txs] = await Promise.all([
-          api.getSummary(user.uid, year, undefined, season),
-          api.getTransactions(user.uid, season),
-        ]);
-        setSummary(sum);
+        const txs = await api.getTransactions(user.uid, season);
         setTransactionsAll(txs);
         setRecentTransactions(txs.slice(0, 8)); // แสดง 8 รายการล่าสุด
+        setSummary(buildSummary(txs));
       } catch (e) {
         console.error(e);
       } finally {
@@ -50,7 +83,7 @@ export default function DashboardPage({ user, setPage, season, setSeason }) {
   const profit = summary ? summary.netProfit : 0;
   const billTransactions = showAllBills
     ? transactionsAll
-    : transactionsAll.filter(t => (t.date ? t.date.toString().slice(0, 10) : '') === billDate);
+    : transactionsAll.filter(t => normalizeDate(t.date) === billDate);
   const billIncome = billTransactions.filter(t => t.type === 'income')
     .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
   const billExpense = billTransactions.filter(t => t.type === 'expense')
@@ -233,7 +266,7 @@ function CategoryRow({ category, income, expense }) {
 
 function TransactionRow({ tx }) {
   const isIncome = tx.type === 'income';
-  const d = tx.date ? tx.date.toString().slice(0, 10) : '';
+  const d = normalizeDate(tx.date);
   const parts = d.split('-');
   const dateStr = parts.length === 3 ? `${parseInt(parts[2])} ${MONTH_TH[parseInt(parts[1])]} ${parseInt(parts[0]) + 543}` : d;
 
