@@ -9,13 +9,20 @@ function fmt(n) {
   return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0 });
 }
 
+function getLocalDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export default function DashboardPage({ user, setPage, season, setSeason }) {
   const [summary, setSummary] = useState(null);
   const [transactionsAll, setTransactionsAll] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [year] = useState(new Date().getFullYear().toString());
-  const [billDate, setBillDate] = useState(new Date().toISOString().slice(0, 10));
+  const [billDate, setBillDate] = useState(getLocalDateString());
   const [showAllBills, setShowAllBills] = useState(false);
 
   useEffect(() => {

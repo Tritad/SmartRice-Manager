@@ -12,6 +12,27 @@ function fmt(n) {
   return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0 });
 }
 
+function getLocalDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function normalizeDate(value) {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parts = value.split('/');
+  if (parts.length === 3 && parts[2].length === 4) {
+    const month = parts[0].padStart(2, '0');
+    const day = parts[1].padStart(2, '0');
+    return `${parts[2]}-${month}-${day}`;
+  }
+  const d = new Date(value);
+  if (!Number.isNaN(d.getTime())) return getLocalDateString(d);
+  return value;
+}
+
 export default function AddTransactionPage({ user, setPage, season, setSeason }) {
   const createItem = (type) => ({
     category: CATEGORIES[type][0],
@@ -21,7 +42,7 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
   });
 
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: getLocalDateString(),
     type: 'expense',
     description: '',
     season: season || '',
@@ -70,6 +91,7 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
     try {
       setLoading(true);
       setError('');
+      const normalizedDate = normalizeDate(form.date);
       const payloads = items.map(it => {
         const lineNote = (it.note || '').trim();
         const lineSummary = `จำนวน ${it.quantity} x ราคา ${it.price}`;
@@ -80,6 +102,7 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
 
         return {
         ...form,
+        date: normalizedDate,
         userId: user.uid,
         userEmail: user.email,
         category: it.category,
@@ -270,9 +293,14 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
       </div>
 
       {success && (
-        <div style={toast}>
-          ✅ บันทึกข้อมูลเรียบร้อย
-        </div>
+        <>
+          <style>{toastStyles}</style>
+          <div style={toastOverlay}>
+            <div style={toast}>
+              ✅ บันทึกข้อมูลเรียบร้อย
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -392,15 +420,44 @@ const submitBtn = {
 };
 
 const toast = {
+  background: 'rgba(255, 255, 255, 0.88)',
+  color: '#1a3a1a',
+  padding: '20px 26px',
+  borderRadius: 14,
+  border: '1.5px solid rgba(45, 122, 79, 0.35)',
+  boxShadow: '0 14px 35px rgba(0,0,0,0.18)',
+  fontSize: 18,
+  fontWeight: 800,
+  textAlign: 'center',
+  minWidth: 260,
+  animation: 'toastPop 0.25s ease, toastFade 0.4s ease 2.6s forwards',
+};
+
+const toastOverlay = {
   position: 'fixed',
-  right: 20,
-  bottom: 20,
-  background: '#2D7A4F',
-  color: '#fff',
-  padding: '12px 16px',
-  borderRadius: 10,
-  boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
-  fontSize: 14,
-  fontWeight: 700,
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(45, 122, 79, 0.08)',
   zIndex: 999,
+  animation: 'backdropFade 0.25s ease, backdropOut 0.4s ease 2.6s forwards',
+};
+
+const toastStyles = `
+@keyframes toastPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes toastFade {
+  to { opacity: 0; transform: scale(0.98); }
+}
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes backdropOut {
+  to { opacity: 0; }
+}
+`;
 };
