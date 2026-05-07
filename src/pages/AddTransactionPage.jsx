@@ -1,0 +1,226 @@
+// src/pages/AddTransactionPage.jsx
+import { useState } from 'react';
+import { api } from '../utils/api';
+
+const CATEGORIES = {
+  expense: ['ค่าเมล็ดพันธุ์', 'ค่าปุ๋ย/ยา', 'ค่าแรงงาน', 'ค่าเครื่องจักร/เช่า', 'ค่าน้ำมัน', 'ค่าเช่าที่นา', 'ค่าไฟ/น้ำ', 'อื่นๆ'],
+  income: ['รายรับจากการขาย', 'เงินอุดหนุน', 'ขายพืชร่วม', 'อื่นๆ'],
+};
+
+export default function AddTransactionPage({ user, setPage }) {
+  const [form, setForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    type: 'expense',
+    category: 'ค่าเมล็ดพันธุ์',
+    amount: '',
+    description: '',
+    season: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const handleTypeChange = (type) => {
+    set('type', type);
+    set('category', CATEGORIES[type][0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.amount || parseFloat(form.amount) <= 0) {
+      setError('กรุณากรอกจำนวนเงินที่ถูกต้อง');
+      return;
+    }
+    try {
+      setLoading(true);
+      setError('');
+      await api.addTransaction({
+        ...form,
+        userId: user.uid,
+        userEmail: user.email,
+        amount: parseFloat(form.amount),
+      });
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setForm(prev => ({ ...prev, amount: '', description: '' }));
+      }, 2000);
+    } catch (e) {
+      setError('บันทึกไม่สำเร็จ: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 560, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <button onClick={() => setPage('dashboard')} style={backBtn}>← กลับ</button>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a3a1a' }}>บันทึกรายการ</h2>
+      </div>
+
+      <div style={card}>
+        {/* Type Toggle */}
+        <div style={toggleRow}>
+          {['expense', 'income'].map(t => (
+            <button
+              key={t}
+              onClick={() => handleTypeChange(t)}
+              style={{
+                ...toggleBtn,
+                background: form.type === t ? (t === 'income' ? '#2D7A4F' : '#c0392b') : 'transparent',
+                color: form.type === t ? '#fff' : '#666',
+              }}
+            >
+              {t === 'expense' ? '📤 รายจ่าย' : '💰 รายรับ'}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Date */}
+          <FormGroup label="วันที่">
+            <input
+              type="date"
+              value={form.date}
+              onChange={e => set('date', e.target.value)}
+              style={input}
+              required
+            />
+          </FormGroup>
+
+          {/* Category */}
+          <FormGroup label="หมวดหมู่">
+            <select value={form.category} onChange={e => set('category', e.target.value)} style={input}>
+              {CATEGORIES[form.type].map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </FormGroup>
+
+          {/* Amount */}
+          <FormGroup label="จำนวนเงิน (บาท)">
+            <input
+              type="number"
+              placeholder="0.00"
+              value={form.amount}
+              onChange={e => set('amount', e.target.value)}
+              style={input}
+              min="0"
+              step="0.01"
+              required
+            />
+          </FormGroup>
+
+          {/* Season */}
+          <FormGroup label="ฤดูกาล / รุ่น (ไม่บังคับ)">
+            <input
+              type="text"
+              placeholder="เช่น นาปี 2567, รุ่นที่ 1"
+              value={form.season}
+              onChange={e => set('season', e.target.value)}
+              style={input}
+            />
+          </FormGroup>
+
+          {/* Description */}
+          <FormGroup label="รายละเอียด (ไม่บังคับ)">
+            <input
+              type="text"
+              placeholder="หมายเหตุเพิ่มเติม"
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              style={input}
+            />
+          </FormGroup>
+
+          {error && <p style={{ color: '#c0392b', fontSize: 13, margin: '4px 0 12px' }}>{error}</p>}
+
+          {success && (
+            <div style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: '#2D7A4F', fontSize: 14 }}>
+              ✅ บันทึกรายการสำเร็จ!
+            </div>
+          )}
+
+          <button type="submit" style={submitBtn} disabled={loading}>
+            {loading ? '⏳ กำลังบันทึก...' : '💾 บันทึกรายการ'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function FormGroup({ label, children }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 6 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const card = {
+  background: '#fff',
+  borderRadius: 16,
+  padding: '28px 24px',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+};
+
+const backBtn = {
+  background: 'none',
+  border: '1.5px solid #ddd',
+  borderRadius: 8,
+  padding: '6px 14px',
+  cursor: 'pointer',
+  fontSize: 14,
+  color: '#555',
+  fontFamily: 'inherit',
+};
+
+const toggleRow = {
+  display: 'flex',
+  background: '#f5f5f5',
+  borderRadius: 10,
+  padding: 4,
+  marginBottom: 24,
+  gap: 4,
+};
+
+const toggleBtn = {
+  flex: 1,
+  padding: '10px',
+  border: 'none',
+  borderRadius: 8,
+  cursor: 'pointer',
+  fontSize: 15,
+  fontWeight: 600,
+  fontFamily: 'inherit',
+  transition: 'all 0.2s',
+};
+
+const input = {
+  width: '100%',
+  padding: '11px 14px',
+  border: '1.5px solid #e0e0e0',
+  borderRadius: 10,
+  fontSize: 15,
+  fontFamily: 'inherit',
+  outline: 'none',
+  boxSizing: 'border-box',
+  background: '#fff',
+};
+
+const submitBtn = {
+  width: '100%',
+  padding: '14px',
+  background: '#2D7A4F',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 10,
+  fontSize: 16,
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  marginTop: 8,
+};
