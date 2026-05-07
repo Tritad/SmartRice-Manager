@@ -297,7 +297,22 @@ export default function AddTransactionPage({ user, setPage, season, setSeason })
           <style>{toastStyles}</style>
           <div style={toastOverlay}>
             <div style={toast}>
-              ✅ บันทึกข้อมูลเรียบร้อย
+              <div style={toastIconWrap}>
+                <svg viewBox="0 0 52 52" style={toastIcon}>
+                  <circle cx="26" cy="26" r="23" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="4" />
+                  <path
+                    d="M14 27 L22 35 L38 19"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="check-path"
+                  />
+                </svg>
+              </div>
+              <div style={toastTitle}>บันทึกข้อมูลเรียบร้อย</div>
+              <div style={toastSub}>รายการถูกบันทึกสำเร็จ</div>
             </div>
           </div>
         </>
@@ -420,17 +435,16 @@ const submitBtn = {
 };
 
 const toast = {
-  background: 'rgba(255, 255, 255, 0.88)',
-  color: '#1a3a1a',
-  padding: '20px 26px',
-  borderRadius: 14,
-  border: '1.5px solid rgba(45, 122, 79, 0.35)',
-  boxShadow: '0 14px 35px rgba(0,0,0,0.18)',
-  fontSize: 18,
-  fontWeight: 800,
+  background: 'rgba(45, 122, 79, 0.88)',
+  color: '#fff',
+  padding: '28px 32px',
+  borderRadius: 18,
+  border: '1.5px solid rgba(255, 255, 255, 0.25)',
+  boxShadow: '0 20px 45px rgba(0,0,0,0.22)',
   textAlign: 'center',
-  minWidth: 260,
-  animation: 'toastPop 0.25s ease, toastFade 0.4s ease 2.6s forwards',
+  minWidth: 360,
+  animation: 'toastPop 0.3s ease, toastFade 0.4s ease 2.6s forwards',
+  backdropFilter: 'blur(4px)',
 };
 
 const toastOverlay = {
@@ -446,8 +460,8 @@ const toastOverlay = {
 
 const toastStyles = `
 @keyframes toastPop {
-  from { opacity: 0; transform: scale(0.92); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 @keyframes toastFade {
   to { opacity: 0; transform: scale(0.98); }
@@ -459,5 +473,40 @@ const toastStyles = `
 @keyframes backdropOut {
   to { opacity: 0; }
 }
+.check-path {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: drawCheck 0.6s ease 0.15s forwards;
+}
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
 `;
+
+const toastIconWrap = {
+  width: 64,
+  height: 64,
+  margin: '0 auto 12px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const toastIcon = {
+  width: 64,
+  height: 64,
+};
+
+const toastTitle = {
+  fontSize: 22,
+  fontWeight: 800,
+  letterSpacing: 0.2,
+};
+
+const toastSub = {
+  marginTop: 6,
+  fontSize: 14,
+  fontWeight: 600,
+  color: 'rgba(255,255,255,0.85)',
+};
 
