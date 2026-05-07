@@ -11,9 +11,10 @@ function fmt(n) {
 }
 
 function formatDate(d) {
-  if (!d) return '';
-  const s = d.toString().slice(0, 10).split('-');
-  if (s.length !== 3) return d;
+  const normalized = normalizeDate(d);
+  if (!normalized) return '';
+  const s = normalized.split('-');
+  if (s.length !== 3) return normalized;
   return `${parseInt(s[2])} ${MONTH_TH[parseInt(s[1])]} ${parseInt(s[0]) + 543}`;
 }
 
