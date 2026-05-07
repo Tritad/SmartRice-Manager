@@ -1,16 +1,30 @@
 // src/components/Navbar.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../utils/firebase';
 
 export default function Navbar({ user, page, setPage }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const navItems = [
     { id: 'dashboard', label: '🏠 หน้าหลัก' },
     { id: 'add', label: '➕ บันทึก' },
     { id: 'report', label: '📊 รายงาน' },
   ];
   const userInitial = (user.displayName || user.email || '?').slice(0, 1).toUpperCase();
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const handleNavClick = (id) => {
+    setPage(id);
+    setNavOpen(false);
+  };
 
   return (
     <nav style={navStyle}>
@@ -22,24 +36,37 @@ export default function Navbar({ user, page, setPage }) {
         </div>
 
         {/* Nav items */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setPage(item.id)}
-              style={{
-                ...navBtn,
-                background: page === item.id ? 'rgba(255,255,255,0.2)' : 'transparent',
-                fontWeight: page === item.id ? 700 : 400,
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        {!isMobile && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                style={{
+                  ...navBtn,
+                  background: page === item.id ? 'rgba(255,255,255,0.2)' : 'transparent',
+                  fontWeight: page === item.id ? 700 : 400,
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* User & logout */}
         <div style={userArea} onMouseLeave={() => setMenuOpen(false)}>
+          {isMobile && (
+            <button
+              onClick={() => setNavOpen(prev => !prev)}
+              style={hamburgerBtn}
+              aria-label="เปิดเมนู"
+            >
+              <span style={{ ...hamburgerLine, width: navOpen ? 18 : 20 }} />
+              <span style={{ ...hamburgerLine, width: 20, opacity: navOpen ? 0.6 : 1 }} />
+              <span style={{ ...hamburgerLine, width: navOpen ? 14 : 18 }} />
+            </button>
+          )}
           <button
             onClick={() => setMenuOpen(prev => !prev)}
             style={avatarBtn}
@@ -65,6 +92,24 @@ export default function Navbar({ user, page, setPage }) {
           )}
         </div>
       </div>
+      {isMobile && navOpen && (
+        <div style={mobileMenuWrap}>
+          <div style={mobileMenuInner}>
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                style={{
+                  ...mobileNavBtn,
+                  background: page === item.id ? 'rgba(45,122,79,0.15)' : '#fff',
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
@@ -111,6 +156,28 @@ const userArea = {
   position: 'relative',
   display: 'flex',
   alignItems: 'center',
+  gap: 10,
+};
+
+const hamburgerBtn = {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  border: '1.5px solid rgba(255,255,255,0.35)',
+  background: 'rgba(255,255,255,0.12)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'column',
+  gap: 4,
+  cursor: 'pointer',
+};
+
+const hamburgerLine = {
+  height: 2,
+  background: '#fff',
+  borderRadius: 99,
+  transition: 'width 0.2s, opacity 0.2s',
 };
 
 const avatarBtn = {
@@ -175,4 +242,30 @@ const logoutBtn = {
   fontSize: 14,
   fontWeight: 700,
   fontFamily: 'inherit',
+};
+
+const mobileMenuWrap = {
+  background: '#2D7A4F',
+  borderTop: '1px solid rgba(255,255,255,0.15)',
+  padding: '10px 16px 14px',
+};
+
+const mobileMenuInner = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 8,
+  maxWidth: 900,
+  margin: '0 auto',
+};
+
+const mobileNavBtn = {
+  border: '1px solid rgba(45,122,79,0.2)',
+  borderRadius: 12,
+  padding: '10px 12px',
+  fontSize: 14,
+  fontWeight: 700,
+  color: '#1a3a1a',
+  cursor: 'pointer',
+  fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif",
+  textAlign: 'center',
 };
