@@ -1,5 +1,5 @@
 // src/components/Navbar.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../utils/firebase';
 
@@ -7,6 +7,7 @@ export default function Navbar({ user, page, setPage }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const navRef = useRef(null);
   const navItems = [
     { id: 'dashboard', label: '🏠 หน้าหลัก' },
     { id: 'add', label: '➕ บันทึก' },
@@ -21,13 +22,25 @@ export default function Navbar({ user, page, setPage }) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!navRef.current) return;
+      if (!navRef.current.contains(event.target)) {
+        setNavOpen(false);
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleNavClick = (id) => {
     setPage(id);
     setNavOpen(false);
   };
 
   return (
-    <nav style={navStyle}>
+    <nav style={navStyle} ref={navRef}>
       <div style={inner}>
         {/* Logo */}
         <div style={logo}>
@@ -55,7 +68,7 @@ export default function Navbar({ user, page, setPage }) {
         )}
 
         {/* User & logout */}
-        <div style={userArea} onMouseLeave={() => setMenuOpen(false)}>
+        <div style={userArea} onMouseLeave={() => !isMobile && setMenuOpen(false)}>
           {isMobile && (
             <button
               onClick={() => setNavOpen(prev => !prev)}
@@ -101,7 +114,7 @@ export default function Navbar({ user, page, setPage }) {
                 onClick={() => handleNavClick(item.id)}
                 style={{
                   ...mobileNavBtn,
-                  background: page === item.id ? 'rgba(45,122,79,0.15)' : '#fff',
+                  background: page === item.id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)',
                 }}
               >
                 {item.label}
@@ -247,25 +260,28 @@ const logoutBtn = {
 const mobileMenuWrap = {
   background: '#2D7A4F',
   borderTop: '1px solid rgba(255,255,255,0.15)',
-  padding: '10px 16px 14px',
+  padding: '10px 10px 12px',
 };
 
 const mobileMenuInner = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: 8,
+  display: 'flex',
+  gap: 10,
+  overflowX: 'auto',
+  scrollBehavior: 'smooth',
+  padding: '0 6px',
   maxWidth: 900,
   margin: '0 auto',
+  scrollbarWidth: 'none',
 };
 
 const mobileNavBtn = {
-  border: '1px solid rgba(45,122,79,0.2)',
-  borderRadius: 12,
-  padding: '10px 12px',
+  border: '1px solid rgba(255,255,255,0.25)',
+  borderRadius: 999,
+  padding: '10px 16px',
   fontSize: 14,
   fontWeight: 700,
-  color: '#1a3a1a',
+  color: '#fff',
   cursor: 'pointer',
   fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif",
-  textAlign: 'center',
+  whiteSpace: 'nowrap',
 };
