@@ -41,7 +41,7 @@ function normalizeDate(value) {
 export default function ReportPage({ user }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, income, expense
+  const [filter, setFilter] = useState('all');
   const [seasonFilter, setSeasonFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -177,26 +177,26 @@ export default function ReportPage({ user }) {
         <div style={{ fontSize: 13, fontWeight: 700, color: '#1a3a1a', marginBottom: 10 }}>ตัวกรองรายงาน</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {[['all', 'ทั้งหมด'], ['income', 'รายรับ'], ['expense', 'รายจ่าย']].map(([v, l]) => (
-          <button
-            key={v}
-            onClick={() => setFilter(v)}
-            style={{
-              padding: '7px 16px',
-              borderRadius: 8,
-              border: '1.5px solid',
-              borderColor: filter === v ? '#2D7A4F' : '#ddd',
-              background: filter === v ? '#2D7A4F' : '#fff',
-              color: filter === v ? '#fff' : '#555',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: 'inherit',
-            }}
-          >
-            {l}
-          </button>
-        ))}
+            {[['all', 'ทั้งหมด'], ['income', 'รายรับ'], ['expense', 'รายจ่าย']].map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setFilter(v)}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 8,
+                  border: '1.5px solid',
+                  borderColor: filter === v ? '#2D7A4F' : '#ddd',
+                  background: filter === v ? '#2D7A4F' : '#fff',
+                  color: filter === v ? '#fff' : '#555',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                }}
+              >
+                {l}
+              </button>
+            ))}
           </div>
           <button onClick={handleDownloadPdf} style={pdfBtn}>⬇️ ดาวน์โหลด PDF</button>
         </div>
@@ -264,7 +264,6 @@ export default function ReportPage({ user }) {
           </div>
         ) : (
           <>
-            {/* Header */}
             <div style={tableHeader}>
               <span style={{ flex: '0 0 110px' }}>วันที่</span>
               <span style={{ flex: 1 }}>หมวดหมู่</span>
